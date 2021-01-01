@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: docker.pkg.github.com/${{ github.repository }}/ghost-comments
+  ISSO_VERSION: 0.12.2
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Obtain Isso
+        run: |
+          wget https://github.com/posativ/isso/archive/$ISSO_VERSION.zip
+          unzip $ISSO_VERSION.zip
+          rm $ISSO_VERSION.zip
+
+      - name: Build image
+        run: docker build . --file Dockerfile --tag $IMAGE_NAME:${{ github.run_number }}
+
+      - name: Log into registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login docker.pkg.github.com -u ${{ github.actor }} --password-stdin
+
+      - name: Push images
+        run: |          
+          docker tag $IMAGE_NAME:${{ github.run_number }} $IMAGE_NAME:latest
+          docker push $IMAGE_NAME:${{ github.run_number }}
+          docker push $IMAGE_NAME:latest
